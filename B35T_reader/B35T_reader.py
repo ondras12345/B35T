@@ -9,14 +9,22 @@ COM_DEFAULT = 'COM19'
 class MyPrompt(Cmd, object):
     prompt = '\n[disconnected] DMM> '
     logFileName = None
+    verbose = False
     
     def do_logfile(self, inp):
-        '''Logs errors into a file instead of displaying them. This has to be the first command. parameter: filename.extension'''
-        if dmm is None:
+        '''Logs errors into a file instead of displaying them. This has to be run before connect. parameter: filename.extension'''
+        if dmm is None and not inp == '':
             self.logFileName = inp
         else:
-            print('logfile has to be the first command')
-    
+            print('logfile has to be run before connect. Specify the path to file.')
+
+    def do_verbose(self, inp):
+        '''Turns on verbose mode. This has to be run before connect.'''
+        if dmm is None:
+            self.verbose = True
+        else:
+            print('verbose has to be run before connect.')
+
     def do_connect(self, inp):
         '''Connects to the DMM (parameter - COM port)'''
         global dmm
@@ -26,7 +34,7 @@ class MyPrompt(Cmd, object):
         else:
             print(inp)
             port = inp
-        dmm = B35T.B35T(port, verbose = False, logFileName = self.logFileName)
+        dmm = B35T.B35T(port, verbose = self.verbose, logFileName = self.logFileName)
         if not dmm.ser is None:
             self.prompt = '\n[connected] DMM> '
         else:
