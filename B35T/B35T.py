@@ -8,7 +8,6 @@
 #TODO - measure - absolutni chyba (least significant digit)
 #TODO - predelat synchronizaci - mezery --> \r\n (var match, while not match)
 #TODO - tlacitka z https://github.com/reaper7/M5Stack_BLE_client_Owon_B35T/blob/master/M5Stack_BLE_client_Owon_B35T.ino
-#TODO - python3 
 
 
 import serial
@@ -28,7 +27,8 @@ received_data = [] #global variable for transfering the from serial_thread
 #                                                                                                                             #
 ###############################################################################################################################
 #0.001 does NOT equal 10 ** (-3) --> all unit prefixes must be in scientific format (10 ** n)
-#Mode 48 - occurs when rotating the switch - handled by try...except in the serial thread 
+#Mode 48 - occurs when rotating the switch - handled by try...except in the serial thread
+#Python 3 handles strings differenty (The string type in Python 2 is a list of 8-bit characters, but the bytes type in Python 3 is a list of 8-bit integers. http://python3porting.com/problems.html) --> removed ord(), use bytearray()
 
 
 ###############################################################################################################################
@@ -108,7 +108,7 @@ class serial_thread(threading.Thread):
         
     def run(self):
         global received_data
-        recv_data = bytearray('')
+        recv_data = bytearray('', 'ascii')
         log.info('serial_thread - Syncing')
         _ser_sync(self.ser)
         while not self.stop_event.is_set():
@@ -117,9 +117,9 @@ class serial_thread(threading.Thread):
             log.debug('serial_thread - Receiving')
             recv_data = self.ser.read(DATA_LENGTH)
             try:
-                log.debug(recv_data)
-                received_data.append(_getValue(recv_data))          
-                log.info(str(received_data[-1]))
+                log.debug('serial_thread - Received: {}'.format(recv_data))
+                received_data.append(_getValue(bytearray(recv_data)))
+                log.info('serial_thread - Added value: {}'.format(str(received_data[-1])))
             except Exception as e:
                 log.error('serial_thread - Exception {} occured.'.format(str(e)))
                 _ser_sync(self.ser) #resynchronize
@@ -131,21 +131,20 @@ class serial_thread(threading.Thread):
 #                                                  Others - functions                                                         #
 #                                                                                                                             #
 ###############################################################################################################################
-        
 def _ser_sync(ser):
     '''Drops everything and waits for valid data'''
     log.info('Entered _ser_sync')
     ser.flushInput() #Python3 - ser.reset_input_buffer()
     skip = 0
-    a = bytearray('abcd')
-    while a[-2:] != bytearray('\r\n') or skip > 0:
+    a = bytearray('abcd', 'ascii')
+    while a[-2:] != bytearray('\r\n', 'ascii') or skip > 0:
         if a == bytearray([0,0,0,0]): #drop the first two logs (zeros and DMM ID) (Amps range does contain 00 00 (00 and units_a), so I have to check for more 00 in a sequence)
             skip = 7 #skip the next 7 spaces (should get rid of the initial junk measures which contain 6 spaces)
             log.debug('_ser_sync - zeros')
         if ser.inWaiting() > 0:
             for i in range(3): #shift the array
-                a[i] = a[i+1]
-            a[3] = ser.read(1)
+                a[i] = a[i + 1]
+            a[3] = ord(ser.read(1))
             log.debug('_ser_sync - a = {}'.format(a))
             log.debug('_ser_sync - added {}'.format(a[3]))
             if skip > 0 and a[3] == ord(' '): #found a space (each log contains a space, initial junk countains 6)
@@ -181,9 +180,9 @@ def _unitsObj(units):
         (128, 4): (10 ** (-6), 'F'),
         (8, 32): (1, 'Ohm-continuity')        
     }
-    (prefix, unit) = unitsDict.get((ord(units[0]), ord(units[1])), (0, 0))
+    (prefix, unit) = unitsDict.get((units[0], units[1]), (0, 0))
     if prefix == 0 and unit == 0:
-        raise Exception('<unknown unit {} {}>'.format(ord(units[0]), ord(units[1])))
+        raise Exception('<unknown unit {} {}>'.format(repr(units[0]), repr(units[1])))
      
     return(B35T_Unit(prefix, unit))
 
@@ -206,13 +205,14 @@ def _modeStr(mode):
         49: '(DC-auto)',
         51: '[HOLD]'
     }
-    modeS = modeDict.get(ord(mode), 'BAD') 
-    if modeS == 'BAD': raise Exception('<unknown mode {}>'.format(ord(mode)))
+    modeS = modeDict.get(mode, 'BAD')
+    if modeS == 'BAD': raise Exception('<unknown mode {}>'.format(repr(mode)))
     
     return(modeS)
 
-def _digitsFloat(sign_digits_str, decimalPos):
+def _digitsFloat(sign_digits_str, decimal_position):
     '''Converts the received digits to a float'''
+    log.info('Entered _digitsFloat')
     coefDict = {
         48: 1,
         49: 0.001,
@@ -226,28 +226,29 @@ def _digitsFloat(sign_digits_str, decimalPos):
             result = int(sign_digits_str)
         except Exception as e:
             log.error('_digitsFloat - Exception {} occured.'.format(str(e)))
-            log.info('_digitsFloat - Exception - Data: sign_digits_str: {}, decimalpos: {}'.format(sign_digits_str, decimalPos))
+            log.info('_digitsFloat - Exception - Data: sign_digits_str: {}, decimalpos: {}'.format(sign_digits_str, decimal_position))
             raise Exception('Could not convert to int: {}'.format(sign_digits_str))
         
-    coef = coefDict.get(ord(decimalPos), 'BAD')     
+    coef = coefDict.get(decimal_position, 'BAD')
+    log.debug('_digitsFloat - coef: {}, result: {}'.format(coef, result))
     if coef != 'BAD': result *= coef
-    else: raise Exception('Could not get coefficient: {}'.format(decimalPos)) 
-        
+    else: raise Exception('Could not get coefficient: {}'.format(repr(decimal_position)))
+    result = round(result, 4) #to remove floating point operations least significant digit junk
+    log.debug('_digitsFloat - returning {}'.format(result))
     return(result)             
          
     
 ###############################################################################################################################
 #                                                      B35T class                                                             #
 #                                                                                                                             #
-#                       All the arguments are the received bytes (not processed using ord() function)                         #
 ###############################################################################################################################
 class B35T(object):
     #ser,
     #logFile
     
-    def __init__(self, port, verbose = False, logFileName = None):
+    def __init__(self, port, verbose=False, logFileName=None):
         if verbose:
-            log.basicConfig(format='%(asctime)s    %(levelname)s: %(message)s', filename=logFileName, level=log.INFO)
+            log.basicConfig(format='%(asctime)s    %(levelname)s: %(message)s', filename=logFileName, level=log.DEBUG)
             log.info("Verbose output.")
         else:
             log.basicConfig(filename=logFileName)
@@ -275,21 +276,21 @@ class B35T(object):
             self.ser.close()
         
     
-    def measure(self, count=3, retries = 10): 
+    def measure(self, count=3, retries=10):
         '''measures (takes readings until the last [count] don't differ)'''
         log.info('Entered measure')
-        i=0
+        i = 0
         ok = False
         errCounter = 0
         last_time = datetime.datetime.now()
         readings = [None] * count
         while not ok:
             #get reading
-            temp = received_data[-1] #because of the thread (maybe isn't needed) 
+            temp = received_data[-1] #because of the thread (maybe isn't needed)
             if temp.dateTime > last_time:
                 readings[i] = temp
                 last_time = datetime.datetime.now()
-                log.info('measure - New reading (i={}): {}'.format(i), str(temp)),
+                log.info('measure - New reading (i={}): {}'.format(i, str(temp)))
                 i+= 1    
             
             if i >= count : #process the data
@@ -309,7 +310,7 @@ class B35T(object):
                         log.error('measure - value is not stable') 
                     i-= 1 #take another reading
                     errCounter += 1
-                    for j in range(count - 1): readings[j] = readings[j+1]
+                    for j in range(count - 1): readings[j] = readings[j + 1]
                 
         return(readings[-1])
         
