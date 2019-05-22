@@ -28,17 +28,20 @@ class MyPrompt(Cmd, object):
     def do_connect(self, inp):
         '''Connects to the DMM (parameter - COM port)'''
         global dmm
-        if inp == '':
-            print('Defaulting to {}'.format(COM_DEFAULT))
-            port = COM_DEFAULT
+        if dmm is None:
+            if inp == '':
+                print('Defaulting to {}'.format(COM_DEFAULT))
+                port = COM_DEFAULT
+            else:
+                print(inp)
+                port = inp
+            dmm = B35T.B35T(port, verbose = self.verbose, logFileName = self.logFileName)
+            if not dmm.ser is None:
+                self.prompt = '\n[connected] DMM> '
+            else:
+                dmm = None
         else:
-            print(inp)
-            port = inp
-        dmm = B35T.B35T(port, verbose = self.verbose, logFileName = self.logFileName)
-        if not dmm.ser is None:
-            self.prompt = '\n[connected] DMM> '
-        else:
-            dmm = None
+            print('Already connected')
              
     def do_measure(self, inp):
         '''Measure the value and return it as text. Also logs if logfile defined'''
