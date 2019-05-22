@@ -9,7 +9,6 @@
 #TODO - predelat synchronizaci - mezery --> \r\n (var match, while not match)
 #TODO - tlacitka z https://github.com/reaper7/M5Stack_BLE_client_Owon_B35T/blob/master/M5Stack_BLE_client_Owon_B35T.ino
 
-
 import serial
 import threading
 import datetime
@@ -27,8 +26,12 @@ received_data = [] #global variable for transfering the from serial_thread
 #                                                                                                                             #
 ###############################################################################################################################
 #0.001 does NOT equal 10 ** (-3) --> all unit prefixes must be in scientific format (10 ** n)
+
 #Mode 48 - occurs when rotating the switch - handled by try...except in the serial thread
-#Python 3 handles strings differenty (The string type in Python 2 is a list of 8-bit characters, but the bytes type in Python 3 is a list of 8-bit integers. http://python3porting.com/problems.html) --> removed ord(), use bytearray()
+
+#Python 3 handles strings differenty (The string type in Python 2 is a list of 8-bit characters, 
+#but the bytes type in Python 3 is a list of 8-bit integers.
+#http://python3porting.com/problems.html) --> removed ord(), use bytearray()
 
 
 ###############################################################################################################################
@@ -83,7 +86,7 @@ class B35T_Unit(object):
         10 ** (-3): 'm',
         1: '',
         10 ** 3: 'k',
-        10 ** 6: 'M'
+        10 ** 6: 'M',
         }
         return(prefixDict.get(prefix, 'BAD'))
         
@@ -123,7 +126,7 @@ class serial_thread(threading.Thread):
             except Exception as e:
                 log.error('serial_thread - Exception {} occured.'.format(str(e)))
                 _ser_sync(self.ser) #resynchronize
-                #raise #re-raise the same exception - cannot do that because I'm in another thread - the exception wouldn't be handled
+                #raise #cannot re-raise the same exception because it wouldn't be handled
         log.info('serial_thread - Thread killed')
         self.alive = False
         
@@ -138,8 +141,9 @@ def _ser_sync(ser):
     skip = 0
     a = bytearray('abcd', 'ascii')
     while a[-2:] != bytearray('\r\n', 'ascii') or skip > 0:
-        if a == bytearray([0,0,0,0]): #drop the first two logs (zeros and DMM ID) (Amps range does contain 00 00 (00 and units_a), so I have to check for more 00 in a sequence)
-            skip = 7 #skip the next 7 spaces (should get rid of the initial junk measures which contain 6 spaces)
+        if a == bytearray([0,0,0,0]): #drop the first n logs (zeros and DMM ID) (Amps range does contain 00 00 (00 and units),
+                                      #so I have to check for more 00 bytes in a sequence)
+            skip = 7 #skip the next 7 spaces (should get rid of the initial junk measures) (see protokol.txt)
             log.debug('_ser_sync - zeros')
         if ser.inWaiting() > 0:
             for i in range(3): #shift the array
@@ -178,7 +182,7 @@ def _unitsObj(units):
         (4, 128): (1, 'V-diode'),
         (0, 4): (10 ** (-9),'F'),
         (128, 4): (10 ** (-6), 'F'),
-        (8, 32): (1, 'Ohm-continuity')        
+        (8, 32): (1, 'Ohm-continuity'),
     }
     (prefix, unit) = unitsDict.get((units[0], units[1]), (0, 0))
     if prefix == 0 and unit == 0:
@@ -189,7 +193,7 @@ def _unitsObj(units):
 def _modeStr(mode):
     '''Returns string representing the current mode'''
     modeDict = {
-        0: 'je_tu_0', #DUTY, hFE, temperature, V-diode
+        0: '', #DUTY, hFE, temperature, V-diode
         1: '(Ohm-manual)', #manual ranging + continuity
         8: '(AC-minmax)',
         9: '(AC-manual)',
@@ -197,13 +201,13 @@ def _modeStr(mode):
         16: '(DC-minmax)',
         17: '(DC-manual)',
         20: '(delta)', #may be wrong
-        #21 - pri prepnuti na delta TODO - v logu z putty neni, pri debugu se neprojevil
+        #21 - when switching to delta - did not occur during debugging
         32: '', #Hz, F
         33: '(Ohm-auto)',
         41: '(AC-auto)',
-        #48 nejak souvisi s mV, nekdy s A (pri startu), mozna pri toceni prepinacem
+        #48 I think it occurs when rotating the range switch
         49: '(DC-auto)',
-        51: '[HOLD]'
+        51: '[HOLD]',
     }
     modeS = modeDict.get(mode, 'BAD')
     if modeS == 'BAD': raise Exception('<unknown mode {}>'.format(repr(mode)))
@@ -217,7 +221,7 @@ def _digitsFloat(sign_digits_str, decimal_position):
         48: 1,
         49: 0.001,
         50: 0.01,
-        52: 0.1
+        52: 0.1,
     }
     if sign_digits_str[1] == '?' and sign_digits_str[4] == '?':
       result = 99999 #O.L
