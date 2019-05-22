@@ -3,6 +3,7 @@ sys.path.append('C:/Users/ondra/Documents/Visual Studio 2017/Projects/Skripty/B3
 import B35T
 from cmd import Cmd
 import datetime
+import time
 
 COM_DEFAULT = 'COM19'
 
@@ -44,7 +45,7 @@ class MyPrompt(Cmd, object):
             print('Already connected')
              
     def do_measure(self, inp):
-        '''Measure the value and return it as text. Also logs if logfile defined'''
+        '''Measure the value and return it as text. Also logs if logfile defined (TODO)'''
         if not dmm is None:
             try:
                 print('Measurement: '), 
@@ -67,18 +68,27 @@ class MyPrompt(Cmd, object):
             print('You have to connect first')
             
     def do_ping(self, inp):
-        '''Prints the time elapsed since last reading'''
+        '''Prints the time elapsed since last reading parameter: number_of_pings (each ping takes 1 second)'''
         if not dmm is None:
-            try:
-                reading = dmm.read()
-                timediff = datetime.datetime.now() - reading.dateTime            
-                print('The last reading was taken {} ago'.format(timediff))
-            except Exception as e:
-                print('Exception: {} occured.'.format(str(e)))
+            if inp != '':
+                count = int(inp)
+                if count == 0 or count > 10:
+                    print('Please enter a valid count.')
+                    count = 0
+            else:
+                count = 5 #default
+
+            for i in range(count):
+                try:
+                    reading = dmm.read()
+                    timediff = datetime.datetime.now() - reading.dateTime            
+                    print('{}   The last reading was taken {} ago'.format(datetime.datetime.now(), timediff))
+                except Exception as e:
+                    print('Exception: {} occured.'.format(str(e)))
+                time.sleep(1)
+            print ('Ping completed')
         else:
-            print('You have to connect first')
-        
-        
+            print('You have to connect first')   
         
     def do_exit(self, inp):
         '''Exit the application'''
