@@ -220,7 +220,7 @@ class serial_thread(threading.Thread):
             50: 0.01,
             52: 0.1,
         }
-        if sign_digits_str[1] == '?' and sign_digits_str[4] == '?':
+        if sign_digits_str[1] == ord('?') and sign_digits_str[4] == ord('?'):
           result = 99999 #O.L
         else: 
             try:
