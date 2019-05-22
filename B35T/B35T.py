@@ -115,7 +115,7 @@ class serial_thread(threading.Thread):
         global received_data
         recv_data = bytearray('', 'ascii')
         log.info('serial_thread - Syncing')
-        _ser_sync(self.ser)
+        self._ser_sync()
         while not self.stop_event.is_set():
             log.debug('serial_thread - Waiting')
             while not self.ser.inWaiting() >= DATA_LENGTH : pass #wait for the data
@@ -123,126 +123,120 @@ class serial_thread(threading.Thread):
             recv_data = self.ser.read(DATA_LENGTH)
             try:
                 log.debug('serial_thread - Received: {}'.format(recv_data))
-                received_data.append(_getValue(bytearray(recv_data)))
+                received_data.append(self._getValue(bytearray(recv_data)))
                 log.info('serial_thread - Added value: {}'.format(str(received_data[-1])))
             except Exception as e:
                 log.error('serial_thread - Exception {} occured.'.format(str(e)))
-                _ser_sync(self.ser) #resynchronize
+                self._ser_sync() #resynchronize
                 #raise #cannot re-raise the same exception because it wouldn't be handled
         log.info('serial_thread - Thread killed')
         self.alive = False
-        
-###############################################################################################################################
-#                                                  Others - functions                                                         #
-#                                                                                                                             #
-###############################################################################################################################
-def _ser_sync(ser):
-    '''Drops everything and waits for valid data'''
-    log.info('Entered _ser_sync')
-    ser.flushInput()
-    skip = 0
-    a = bytearray('abcd', 'ascii')
-    while skip >= 0:
-        if ser.inWaiting() > 0:
-            for i in range(3): #shift the array
-                a[i] = a[i + 1]
-            a[3] = ord(ser.read(1))
-            log.debug('_ser_sync - a = {}'.format(repr(a)))
 
-            if a == bytearray([0,0,0,0]): #drop the first n logs (zeros, DMM ID and junk) (see warnings)
-                skip = 4 #skip the next 5 logs (including the zeros) (see protokol.txt)
-                log.debug('_ser_sync - zeros')
+    def _ser_sync(self):
+        '''Drops everything and waits for valid data'''
+        log.info('Entered _ser_sync')
+        self.ser.flushInput()
+        skip = 0
+        a = bytearray('abcd', 'ascii')
+        while skip >= 0:
+            if self.ser.inWaiting() > 0:
+                for i in range(3): #shift the array
+                    a[i] = a[i + 1]
+                a[3] = ord(self.ser.read(1))
+                log.debug('_ser_sync - a = {}'.format(repr(a)))
 
-            if a[-2:] == bytearray('\r\n', 'ascii'):
-                skip -= 1
-                log.debug('_ser_sync - newline')
+                if a == bytearray([0,0,0,0]): #drop the first n logs (zeros, DMM ID and junk) (see warnings)
+                    skip = 4 #skip the next 5 logs (including the zeros) (see protokol.txt)
+                    log.debug('_ser_sync - zeros')
 
-def _getValue(raw_data):    
-    digits = _digitsFloat(raw_data[:5], raw_data[6])
-    units = _unitsObj(raw_data[9:11])
-    mode = _modeStr(raw_data[7])
-    
-    return (B35T_MeasuredValue(datetime.datetime.now(), digits, units, mode))
+                if a[-2:] == bytearray('\r\n', 'ascii'):
+                    skip -= 1
+                    log.debug('_ser_sync - newline')
+
+    def _getValue(self, raw_data):
+        '''Gets value from raw data'''
+        digits = self._digitsFloat(raw_data[:5], raw_data[6])
+        units = self._unitsObj(raw_data[9:11])
+        mode = self._modeStr(raw_data[7])
+        return (B35T_MeasuredValue(datetime.datetime.now(), digits, units, mode))
     
     
-def _unitsObj(units): 
-    '''Returns Unit eg. mV = Unit(0.001, 'V')'''
-    unitsDict = {
-        (64, 128): (10 ** (-3), 'V'),
-        (0, 128): (1, 'V'),
-        (0, 32): (1, 'Ohm'),
-        (32, 32): (10 ** 3, 'Ohm'),
-        (16, 32): (10 ** 6, 'Ohm'),
-        (0, 64): (1, 'A'),
-        (64, 64): (10 ** (-3), 'A'),
-        (128, 64): (10 ** (-6), 'A'),
-        (0, 1): (1, u'degF'),
-        (0, 2): (1, u'degC'),
-        (0, 8): (1, 'Hz'),
-        (2, 0): (1, '%'),
-        (0, 16): (1, 'hFE'),
-        (4, 128): (1, 'V-diode'),
-        (0, 4): (10 ** (-9),'F'),
-        (128, 4): (10 ** (-6), 'F'),
-        (8, 32): (1, 'Ohm-continuity'),
-    }
-    (prefix, unit) = unitsDict.get((units[0], units[1]), (0, 0))
-    if prefix == 0 and unit == 0:
-        raise Exception('<unknown unit {} {}>'.format(repr(units[0]), repr(units[1])))
+    def _unitsObj(self, units): 
+        '''Returns Unit eg. mV = Unit(0.001, 'V')'''
+        unitsDict = {
+            (64, 128): (10 ** (-3), 'V'),
+            (0, 128): (1, 'V'),
+            (0, 32): (1, 'Ohm'),
+            (32, 32): (10 ** 3, 'Ohm'),
+            (16, 32): (10 ** 6, 'Ohm'),
+            (0, 64): (1, 'A'),
+            (64, 64): (10 ** (-3), 'A'),
+            (128, 64): (10 ** (-6), 'A'),
+            (0, 1): (1, u'degF'),
+            (0, 2): (1, u'degC'),
+            (0, 8): (1, 'Hz'),
+            (2, 0): (1, '%'),
+            (0, 16): (1, 'hFE'),
+            (4, 128): (1, 'V-diode'),
+            (0, 4): (10 ** (-9),'F'),
+            (128, 4): (10 ** (-6), 'F'),
+            (8, 32): (1, 'Ohm-continuity'),
+        }
+        (prefix, unit) = unitsDict.get((units[0], units[1]), (0, 0))
+        if prefix == 0 and unit == 0:
+            raise Exception('<unknown unit {} {}>'.format(repr(units[0]), repr(units[1])))
      
-    return(B35T_Unit(prefix, unit))
+        return(B35T_Unit(prefix, unit))
 
-def _modeStr(mode):
-    '''Returns string representing the current mode'''
-    modeDict = {
-        0: '', #DUTY, hFE, temperature, V-diode
-        1: '(Ohm-manual)', #manual ranging + continuity
-        8: '(AC-minmax)',
-        9: '(AC-manual)',
-        12: '(AC delta)', #may be something else, but it is present when AC delta
-        16: '(DC-minmax)',
-        17: '(DC-manual)',
-        20: '(delta)', #may be wrong
-        #21 - when switching to delta - did not occur during debugging
-        32: '', #Hz, F
-        33: '(Ohm-auto)',
-        41: '(AC-auto)',
-        #48 I think it occurs when rotating the range switch
-        49: '(DC-auto)',
-        51: '[HOLD]',
-    }
-    modeS = modeDict.get(mode, 'BAD')
-    if modeS == 'BAD': raise Exception('<unknown mode {}>'.format(repr(mode)))
-    
-    return(modeS)
+    def _modeStr(self, mode):
+        '''Returns string representing the current mode'''
+        modeDict = {
+            0: '', #DUTY, hFE, temperature, V-diode
+            1: '(Ohm-manual)', #manual ranging + continuity
+            8: '(AC-minmax)',
+            9: '(AC-manual)',
+            12: '(AC delta)', #may be something else, but it is present when AC delta
+            16: '(DC-minmax)',
+            17: '(DC-manual)',
+            20: '(delta)', #may be wrong
+            #21 - when switching to delta - did not occur during debugging
+            32: '', #Hz, F
+            33: '(Ohm-auto)',
+            41: '(AC-auto)',
+            #48 I think it occurs when rotating the range switch
+            49: '(DC-auto)',
+            51: '[HOLD]',
+        }
+        modeS = modeDict.get(mode, 'BAD')
+        if modeS == 'BAD': raise Exception('<unknown mode {}>'.format(repr(mode)))
+        return(modeS)
 
-def _digitsFloat(sign_digits_str, decimal_position):
-    '''Converts the received digits to a float'''
-    log.info('Entered _digitsFloat')
-    coefDict = {
-        48: 1,
-        49: 0.001,
-        50: 0.01,
-        52: 0.1,
-    }
-    if sign_digits_str[1] == '?' and sign_digits_str[4] == '?':
-      result = 99999 #O.L
-    else: 
-        try:
-            result = int(sign_digits_str)
-        except Exception as e:
-            log.error('_digitsFloat - Exception {} occured.'.format(str(e)))
-            log.info('_digitsFloat - Exception - Data: sign_digits_str: {}, decimalpos: {}'.format(sign_digits_str, decimal_position))
-            raise Exception('Could not convert to int: {}'.format(sign_digits_str))
+    def _digitsFloat(self, sign_digits_str, decimal_position):
+        '''Converts the received digits to a float'''
+        log.info('Entered _digitsFloat')
+        coefDict = {
+            48: 1,
+            49: 0.001,
+            50: 0.01,
+            52: 0.1,
+        }
+        if sign_digits_str[1] == '?' and sign_digits_str[4] == '?':
+          result = 99999 #O.L
+        else: 
+            try:
+                result = int(sign_digits_str)
+            except Exception as e:
+                log.error('_digitsFloat - Exception {} occured.'.format(str(e)))
+                log.info('_digitsFloat - Exception - Data: sign_digits_str: {}, decimalpos: {}'.format(sign_digits_str, decimal_position))
+                raise Exception('Could not convert to int: {}'.format(sign_digits_str))
         
-    coef = coefDict.get(decimal_position, 'BAD')
-    log.debug('_digitsFloat - coef: {}, result: {}'.format(coef, result))
-    if coef != 'BAD': result *= coef
-    else: raise Exception('Could not get coefficient: {}'.format(repr(decimal_position)))
-    result = round(result, 4) #to remove floating point operations least significant digit junk
-    log.debug('_digitsFloat - returning {}'.format(result))
-    return(result)             
-         
+        coef = coefDict.get(decimal_position, 'BAD')
+        log.debug('_digitsFloat - coef: {}, result: {}'.format(coef, result))
+        if coef != 'BAD': result *= coef
+        else: raise Exception('Could not get coefficient: {}'.format(repr(decimal_position)))
+        result = round(result, 4) #to remove floating point operations least significant digit junk
+        log.debug('_digitsFloat - returning {}'.format(result))
+        return(result)
     
 ###############################################################################################################################
 #                                                      B35T class                                                             #
@@ -317,7 +311,7 @@ class B35T(object):
                     i-= 1 #take another reading
                     errCounter += 1
                     for j in range(count - 1): readings[j] = readings[j + 1]
-                
+        log.info('measure - returned {}'.format(str(readings[-1])))
         return(readings[-1])
         
     def read(self):
