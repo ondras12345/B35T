@@ -6,7 +6,6 @@
 #TODO - timeouts
 #TODO - odzkouset deltu na vsech rozsazich
 #TODO - measure - absolutni chyba (least significant digit)
-#TODO - predelat synchronizaci - mezery --> \r\n (var match, while not match)
 #TODO - tlacitka z https://github.com/reaper7/M5Stack_BLE_client_Owon_B35T/blob/master/M5Stack_BLE_client_Owon_B35T.ino
 
 import serial
@@ -32,6 +31,9 @@ received_data = [] #global variable for transfering the from serial_thread
 #Python 3 handles strings differenty (The string type in Python 2 is a list of 8-bit characters, 
 #but the bytes type in Python 3 is a list of 8-bit integers.
 #http://python3porting.com/problems.html) --> removed ord(), use bytearray()
+
+#Amps range does contain 00 00 (00 and units),
+#so I have to check for more 00 bytes in a sequence)
 
 
 ###############################################################################################################################
@@ -137,23 +139,23 @@ class serial_thread(threading.Thread):
 def _ser_sync(ser):
     '''Drops everything and waits for valid data'''
     log.info('Entered _ser_sync')
-    ser.flushInput() #Python3 - ser.reset_input_buffer()
+    ser.flushInput()
     skip = 0
     a = bytearray('abcd', 'ascii')
-    while a[-2:] != bytearray('\r\n', 'ascii') or skip > 0:
-        if a == bytearray([0,0,0,0]): #drop the first n logs (zeros and DMM ID) (Amps range does contain 00 00 (00 and units),
-                                      #so I have to check for more 00 bytes in a sequence)
-            skip = 7 #skip the next 7 spaces (should get rid of the initial junk measures) (see protokol.txt)
-            log.debug('_ser_sync - zeros')
+    while skip >= 0:
         if ser.inWaiting() > 0:
             for i in range(3): #shift the array
                 a[i] = a[i + 1]
             a[3] = ord(ser.read(1))
-            log.debug('_ser_sync - a = {}'.format(a))
-            log.debug('_ser_sync - added {}'.format(a[3]))
-            if skip > 0 and a[3] == ord(' '): #found a space (each log contains a space, initial junk countains 6)
+            log.debug('_ser_sync - a = {}'.format(repr(a)))
+
+            if a == bytearray([0,0,0,0]): #drop the first n logs (zeros, DMM ID and junk) (see warnings)
+                skip = 4 #skip the next 5 logs (including the zeros) (see protokol.txt)
+                log.debug('_ser_sync - zeros')
+
+            if a[-2:] == bytearray('\r\n', 'ascii'):
                 skip -= 1
-                log.debug('_ser_sync - space')
+                log.debug('_ser_sync - newline')
 
 def _getValue(raw_data):    
     digits = _digitsFloat(raw_data[:5], raw_data[6])
