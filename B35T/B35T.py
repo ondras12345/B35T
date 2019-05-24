@@ -6,7 +6,6 @@
 #TODO - timeouts
 #TODO - odzkouset deltu na vsech rozsazich
 #TODO - tlacitka z https://github.com/reaper7/M5Stack_BLE_client_Owon_B35T/blob/master/M5Stack_BLE_client_Owon_B35T.ino
-#TODO - SCI number format: 1ex instead of 10 ** x
 
 import serial
 import threading
@@ -27,7 +26,7 @@ received_data = [] #global variable for transfering the from serial_thread
 #                                                       WARNINGS                                                              #
 #                                                                                                                             #
 ###############################################################################################################################
-#0.001 does NOT equal 10 ** (-3) --> all unit prefixes must be in scientific format (10 ** n)
+#0.001 does NOT equal 10 ** (-3) --> all unit prefixes must be in scientific format (10e(n))
 
 #Mode 48 - occurs when rotating the switch - handled by try...except in the serial thread
 
@@ -95,12 +94,12 @@ class B35T_Unit(object):
     
     def prefixStr(self, prefix):
         prefixDict = {
-        10 ** (-9): 'n',
-        10 ** (-6): 'u',
-        10 ** (-3): 'm',
+        1e-9: 'n',
+        1e-6: 'u',
+        1e-3: 'm',
         1: '',
-        10 ** 3: 'k',
-        10 ** 6: 'M',
+        1e3: 'k',
+        1e6: 'M',
         }
         return(prefixDict.get(prefix, 'BAD'))
         
@@ -176,22 +175,22 @@ class serial_thread(threading.Thread):
     def _unitsObj(self, units): 
         '''Returns Unit eg. mV = Unit(0.001, 'V')'''
         unitsDict = {
-            (64, 128): (10 ** (-3), 'V'),
+            (64, 128): (1e-3, 'V'),
             (0, 128): (1, 'V'),
             (0, 32): (1, 'Ohm'),
-            (32, 32): (10 ** 3, 'Ohm'),
-            (16, 32): (10 ** 6, 'Ohm'),
+            (32, 32): (1e3, 'Ohm'),
+            (16, 32): (1e6, 'Ohm'),
             (0, 64): (1, 'A'),
-            (64, 64): (10 ** (-3), 'A'),
-            (128, 64): (10 ** (-6), 'A'),
+            (64, 64): (1e-3, 'A'),
+            (128, 64): (1e-6, 'A'),
             (0, 1): (1, u'degF'),
             (0, 2): (1, u'degC'),
             (0, 8): (1, 'Hz'),
             (2, 0): (1, '%'),
             (0, 16): (1, 'hFE'),
             (4, 128): (1, 'V-diode'),
-            (0, 4): (10 ** (-9),'F'),
-            (128, 4): (10 ** (-6), 'F'),
+            (0, 4): (1e-9,'F'),
+            (128, 4): (1e-6, 'F'),
             (8, 32): (1, 'Ohm-continuity'),
         }
         (prefix, unit) = unitsDict.get((units[0], units[1]), (0, 0))
