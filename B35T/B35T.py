@@ -5,8 +5,8 @@
 
 #TODO - timeouts
 #TODO - odzkouset deltu na vsech rozsazich
-#TODO - measure - absolutni chyba (least significant digit)
 #TODO - tlacitka z https://github.com/reaper7/M5Stack_BLE_client_Owon_B35T/blob/master/M5Stack_BLE_client_Owon_B35T.ino
+#TODO - SCI number format: 1ex instead of 10 ** x
 
 import serial
 import threading
@@ -17,6 +17,9 @@ import logging as log
 
 
 DATA_LENGTH = 14
+ABSOLUTE_ERROR = 5 #max least significant digit deviation
+RELATIVE_ERROR = 10 #in %, max difference between two measurements
+
 
 received_data = [] #global variable for transfering the from serial_thread
 
@@ -46,31 +49,40 @@ class B35T_MeasuredValue(object):
     #mode,
     #dateTime
     
-    def __init__(self, dateTime, digits, units, mode):
+    def __init__(self, dateTime, digits, units, mode, LSD_position):
         self.digits = digits
         self.units = units
         self.mode = mode
         self.dateTime = dateTime
+        self.LSD_position = LSD_position #position of the least significant digit (e.g. 0.1, 0.01, ...)
         
     def matches(self, B):
+        log.info('Entered matches')
+        log.debug('matches - Comparing {} to {}'.format(str(self), str(B)))
         if not self.mode == B.mode: return(False)
-        valA = self.digits * self.units.prefix
-        valB = B.digits * B.units.prefix
-        if valA == 0: #to prevent division by zero
-            if valB == 0: deviation = 0
-            else:
-                deviation = valB #to have at least something in the deviation var
-        else:
-            deviation = (valB - valA) / valA * 100 #in %, relative to A (TODO - absolute error (LSD))
-        if abs(deviation) > 10 : return(False)
+
+        valA = round(self.digits * self.units.prefix, 12) #round because 1986 * 0.1 = 198.60000000000002
+        valB = round(B.digits * B.units.prefix, 12)
         
+        if valA == 0: #to prevent division by zero
+            if valB == 0 : difference = 0
+            else : difference = 99999 #to fail in the % condition
+        else:
+            difference = abs((valB - valA) / valA * 100) #in %, relative to A
+        if difference > RELATIVE_ERROR:
+            log.debug('matches - % difference too high ({}% > {}%)'.format(difference, RELATIVE_ERROR))
+            absolute_difference = abs(valA - valB)
+            if absolute_difference > (self.LSD_position * ABSOLUTE_ERROR * self.units.prefix + B.LSD_position * ABSOLUTE_ERROR * B.units.prefix):
+                log.debug('matches - Absolute difference too high ({}). Returning False'.format(absolute_difference))
+                return(False)
+        log.debug('matches - Returning True')
         return(True)
                             
     def __str__(self):
         return ('{};{};{};{}'.format(self.dateTime, self.digits, self.units, self.mode))  
         
     def __repr__(self):
-        return ('{}({}, {}, {}, {})'.format(self.__class__.__name__, repr(self.dateTime), repr(self.digits), repr(self.units), repr(self.mode)))
+        return ('{}({}, {}, {}, {})'.format(self.__class__.__name__, repr(self.dateTime), repr(self.digits), repr(self.units), repr(self.mode), repr(self.LSD_position)))
                
 class B35T_Unit(object):
     #_prefix,
@@ -155,10 +167,10 @@ class serial_thread(threading.Thread):
 
     def _getValue(self, raw_data):
         '''Gets value from raw data'''
-        digits = self._digitsFloat(raw_data[:5], raw_data[6])
+        (digits, LSD_position) = self._digitsFloat(raw_data[:5], raw_data[6])
         units = self._unitsObj(raw_data[9:11])
         mode = self._modeStr(raw_data[7])
-        return (B35T_MeasuredValue(datetime.datetime.now(), digits, units, mode))
+        return (B35T_MeasuredValue(datetime.datetime.now(), digits, units, mode, LSD_position))
     
     
     def _unitsObj(self, units): 
@@ -212,7 +224,7 @@ class serial_thread(threading.Thread):
         return(modeS)
 
     def _digitsFloat(self, sign_digits_str, decimal_position):
-        '''Converts the received digits to a float'''
+        '''Converts the received digits to a float. Returns (digits, LSD_position)'''
         log.info('Entered _digitsFloat')
         coefDict = {
             48: 1,
@@ -235,8 +247,8 @@ class serial_thread(threading.Thread):
         if coef != 'BAD': result *= coef
         else: raise Exception('Could not get coefficient: {}'.format(repr(decimal_position)))
         result = round(result, 4) #to remove floating point operations least significant digit junk
-        log.debug('_digitsFloat - returning {}'.format(result))
-        return(result)
+        log.debug('_digitsFloat - returning ({}, {})'.format(result, coef))
+        return((result, coef))
     
 ###############################################################################################################################
 #                                                      B35T class                                                             #
@@ -281,7 +293,7 @@ class B35T(object):
         log.info('Entered measure')
         i = 0
         ok = False
-        errCounter = 0
+        error_counter = 0
         last_time = datetime.datetime.now()
         readings = [None] * count
         while not ok:
@@ -290,27 +302,29 @@ class B35T(object):
             if temp.dateTime > last_time:
                 readings[i] = temp
                 last_time = datetime.datetime.now()
-                log.info('measure - New reading (i={}): {}'.format(i, str(temp)))
+                log.debug('measure - New reading (i={}): {}'.format(i, str(temp)))
                 i+= 1    
             
             if i >= count : #process the data
                 log.debug('measure - i >= {}'.format(count))
                 readingsMatch = True
                 for r in readings:
-                    log.debug('measure - processing {}'.format(str(r)))
+                    log.debug('measure - Processing {}    ;    comparing to {}'.format(str(r), str(readings[0])))
                     if not readings[0].matches(r):
                         readingsMatch = False
-                        log.debug('measure - readings do not match')
+                        log.debug('measure - Readings do not match')
                   
                 if readingsMatch: #the last [count] readings are OK
                     ok = True
                 else:
-                    if errCounter >= retries - 1:
+                    if error_counter >= retries - 1:
+                        log.error('measure - Value is not stable') 
                         raise Exception('Value is not stable')
-                        log.error('measure - value is not stable') 
+
+                    error_counter += 1
+                    for j in range(count - 1): readings[j] = readings[j + 1] #shift the array
                     i-= 1 #take another reading
-                    errCounter += 1
-                    for j in range(count - 1): readings[j] = readings[j + 1]
+
         log.info('measure - returned {}'.format(str(readings[-1])))
         return(readings[-1])
         
