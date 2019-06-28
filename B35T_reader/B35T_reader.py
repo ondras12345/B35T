@@ -1,5 +1,4 @@
 import sys
-sys.path.append('C:/Users/ondra/Documents/Visual Studio 2017/Projects/Skripty/B35T/B35T') #to be able to import the B35T library while not in the same directory.
 import B35T
 from cmd import Cmd
 import datetime

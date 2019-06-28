@@ -26,7 +26,7 @@ received_data = [] #global variable for transfering the from serial_thread
 #                                                       WARNINGS                                                              #
 #                                                                                                                             #
 ###############################################################################################################################
-#0.001 does NOT equal 10 ** (-3) --> all unit prefixes must be in scientific format (10e(n))
+#0.001 does NOT equal 10 ** (-3) (python2 only) --> all unit prefixes must be in scientific format (10e(n))
 
 #Mode 48 - occurs when rotating the switch - handled by try...except in the serial thread
 
@@ -134,8 +134,8 @@ class serial_thread(threading.Thread):
             recv_data = self.ser.read(DATA_LENGTH)
             try:
                 log.debug('serial_thread - Received: {}'.format(recv_data))
-                received_data.append(self._getValue(bytearray(recv_data)))
-                log.info('serial_thread - Added value: {}'.format(str(received_data[-1])))
+                received_data.append(self._getValue(bytearray(recv_data))) #list.append() is thread safe https://stackoverflow.com/questions/6319207/are-lists-thread-safe
+                log.info('serial_thread - Added value: {}'.format(str(received_data[-1]))) #nothing else is writing to this variable
             except Exception as e:
                 log.error('serial_thread - Exception {} occured.'.format(str(e)))
                 self._ser_sync() #resynchronize
@@ -297,7 +297,7 @@ class B35T(object):
         readings = [None] * count
         while not ok:
             #get reading
-            temp = received_data[-1] #because of the thread (maybe isn't needed)
+            temp = received_data[-1] #because of the thread
             if temp.dateTime > last_time:
                 readings[i] = temp
                 last_time = datetime.datetime.now()
