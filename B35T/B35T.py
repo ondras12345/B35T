@@ -1,11 +1,9 @@
-#https://hackaday.io/project/12922-bluetooth-data-owon-b35t-multimeter#menu-description
 #https://github.com/gregpinero/ArduinoPlot/blob/master/Arduino_Monitor.py
-#https://github.com/reaper7/M5Stack_BLE_client_Owon_B35T/blob/master/M5Stack_BLE_client_Owon_B35T.ino
 #https://code-maven.com/interactive-shell-with-cmd-in-python
 
 #TODO - timeouts
-#TODO - odzkouset deltu na vsech rozsazich
-#TODO - tlacitka z https://github.com/reaper7/M5Stack_BLE_client_Owon_B35T/blob/master/M5Stack_BLE_client_Owon_B35T.ino
+#TODO - test delta measurement with all ranges
+#TODO - buttons - try https://github.com/reaper7/M5Stack_BLE_client_Owon_B35T/blob/master/M5Stack_BLE_client_Owon_B35T.ino
 
 import serial
 import threading
