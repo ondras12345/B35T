@@ -14,18 +14,18 @@ class MyPrompt(Cmd, object):
     verbose = False
     
     def do_logfile(self, inp):
-        '''Logs errors into a file instead of displaying them. This has to be run before connect. Argument: filename.extension'''
+        '''Logs errors into a file instead of displaying them. This has to be executed before connect. Argument: filename.extension'''
         if dmm is None and not inp == '':
             self.logFileName = inp
         else:
-            print('logfile has to be run before connect. Specify the path to file.')
+            print('logfile has to be executed before connect. Specify the path to file.')
 
     def do_verbose(self, inp):
-        '''Turns on verbose mode. This has to be run before connect.'''
+        '''Turns on verbose mode. This has to be executed before connect.'''
         if dmm is None:
             self.verbose = True
         else:
-            print('verbose has to be run before connect.')
+            print('verbose has to be executed before connect.')
 
     def do_connect(self, inp):
         '''Connects to the DMM. Argument: COM_port'''
