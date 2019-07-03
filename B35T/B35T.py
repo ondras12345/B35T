@@ -154,8 +154,8 @@ class serial_thread(threading.Thread):
                 a[3] = ord(self.ser.read(1))
                 log.debug('_ser_sync - a = {}'.format(repr(a)))
 
-                if a == bytearray([0,0,0,0]): #drop the first n logs (zeros, DMM ID and junk) (see warnings)
-                    skip = 4 #skip the next 5 logs (including the zeros) (see protokol.txt)
+                if a == bytearray([0,0,0,0]): #drop the first few messages (zeros, DMM ID and junk) (see warnings)
+                    skip = 4 #skip the next 5 messages (including the zeros)
                     log.debug('_ser_sync - zeros')
 
                 if a[-2:] == bytearray('\r\n', 'ascii'):
