@@ -330,4 +330,4 @@ class B35T(object):
         return(received_data[-1])
         
     def __str__(self):
-        return('B35T DMM on port {}'.format(str(ser)))
+        return('B35T DMM on port {}'.format(str(self.ser)))
