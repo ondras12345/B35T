@@ -119,9 +119,9 @@ class B35T_protocol_decoder(object):
 
     def getValue(self):
         '''Gets value from message'''
-        (digits, LSD_position) = self._digits_to_float(message[:5], message[6])
-        units = self._units_to_object(message[9:11])
-        mode = self._mode_to_string(message[7])
+        (digits, LSD_position) = self._digits_to_float(self.message[:5], self.message[6])
+        units = self._units_to_object(self.message[9:11])
+        mode = self._mode_to_string(self.message[7])
         return (B35T_MeasuredValue(datetime.datetime.now(), digits, units, mode, LSD_position))
 
     def _units_to_object(self, units_bytes):
