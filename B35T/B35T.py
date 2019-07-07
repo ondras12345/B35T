@@ -113,61 +113,15 @@ class B35T_Unit(object):
         return ('{}({}, {})'.format(self.__class__.__name__, repr(self.prefix), repr(self.unitStr)))
 
 
-class serial_thread(threading.Thread):
-    def __init__(self, ser):
-        threading.Thread.__init__(self)
-        self.stop_event = threading.Event()
-        self.ser = ser
-        self.alive = True
+class B35T_protocol_decoder(object):
+    def __init__(self, message):
+        self.message = message
 
-    def run(self):
-        global received_data
-        recv_data = bytearray('', 'ascii')
-        log.info('serial_thread - Syncing')
-        self._ser_sync()
-        while not self.stop_event.is_set():
-            log.debug('serial_thread - Waiting')
-            while not self.ser.inWaiting() >= DATA_LENGTH:
-                pass  # wait for the data
-            log.debug('serial_thread - Receiving')
-            recv_data = self.ser.read(DATA_LENGTH)
-            try:
-                log.debug('serial_thread - Received: {}'.format(recv_data))
-                received_data.append(self._getValue(bytearray(recv_data)))  # list.append() is thread safe https://stackoverflow.com/questions/6319207/are-lists-thread-safe
-                log.info('serial_thread - Added value: {}'.format(str(received_data[-1])))  # nothing else is writing to this variable
-            except Exception as e:
-                log.error('serial_thread - Exception {} occured.'.format(str(e)))
-                self._ser_sync()  # resynchronize
-                # raise  # cannot re-raise the same exception because it wouldn't be handled
-        log.info('serial_thread - Thread killed')
-        self.alive = False
-
-    def _ser_sync(self):
-        '''Drops everything and waits for valid data'''
-        log.info('Entered _ser_sync')
-        self.ser.flushInput()
-        skip = 0
-        a = bytearray('abcd', 'ascii')
-        while skip >= 0:
-            if self.ser.inWaiting() > 0:
-                for i in range(3):  # shift the array
-                    a[i] = a[i + 1]
-                a[3] = ord(self.ser.read(1))
-                log.debug('_ser_sync - a = {}'.format(repr(a)))
-
-                if a == bytearray([0, 0, 0, 0]):  # drop the first few messages (zeros, DMM ID and junk) (see warnings)
-                    skip = 4  # skip the next 5 messages (including the zeros)
-                    log.debug('_ser_sync - zeros')
-
-                if a[-2:] == bytearray('\r\n', 'ascii'):
-                    skip -= 1
-                    log.debug('_ser_sync - newline')
-
-    def _getValue(self, raw_data):
-        '''Gets value from raw data'''
-        (digits, LSD_position) = self._digitsFloat(raw_data[:5], raw_data[6])
-        units = self._unitsObj(raw_data[9:11])
-        mode = self._modeStr(raw_data[7])
+    def getValue(self):
+        '''Gets value from message'''
+        (digits, LSD_position) = self._digitsFloat(message[:5], message[6])
+        units = self._unitsObj(message[9:11])
+        mode = self._modeStr(message[7])
         return (B35T_MeasuredValue(datetime.datetime.now(), digits, units, mode, LSD_position))
 
     def _unitsObj(self, units):
@@ -249,6 +203,58 @@ class serial_thread(threading.Thread):
         result = round(result, 4)  # to remove floating point operations least significant digit junk
         log.debug('_digitsFloat - returning ({}, {})'.format(result, coef))
         return((result, coef))
+
+
+class serial_thread(threading.Thread):
+    def __init__(self, ser):
+        threading.Thread.__init__(self)
+        self.stop_event = threading.Event()
+        self.ser = ser
+        self.alive = True
+
+    def run(self):
+        global received_data
+        received_message = bytearray('', 'ascii')
+        log.info('serial_thread - Syncing')
+        self._ser_sync()
+        while not self.stop_event.is_set():
+            log.debug('serial_thread - Waiting')
+            while not self.ser.inWaiting() >= DATA_LENGTH:
+                pass  # wait for the data
+            log.debug('serial_thread - Receiving')
+            received_message = self.ser.read(DATA_LENGTH)
+            try:
+                log.debug('serial_thread - Received: {}'.format(received_message))
+                decoder = B35T_protocol_decoder(received_message)
+                received_data.append(decoder.getValue(bytearray(received_message)))  # list.append() is thread safe https://stackoverflow.com/questions/6319207/are-lists-thread-safe
+                log.info('serial_thread - Added value: {}'.format(str(received_data[-1])))  # nothing else is writing to this variable
+            except Exception as e:
+                log.error('serial_thread - Exception {} occured.'.format(str(e)))
+                self._ser_sync()  # resynchronize
+                # raise  # cannot re-raise the same exception because it wouldn't be handled
+        log.info('serial_thread - Thread killed')
+        self.alive = False
+
+    def _ser_sync(self):
+        '''Drops everything and waits for valid data'''
+        log.info('Entered _ser_sync')
+        self.ser.flushInput()
+        skip = 0
+        a = bytearray('abcd', 'ascii')
+        while skip >= 0:
+            if self.ser.inWaiting() > 0:
+                for i in range(3):  # shift the array
+                    a[i] = a[i + 1]
+                a[3] = ord(self.ser.read(1))
+                log.debug('_ser_sync - a = {}'.format(repr(a)))
+
+                if a == bytearray([0, 0, 0, 0]):  # drop the first few messages (zeros, DMM ID and junk) (see warnings)
+                    skip = 4  # skip the next 5 messages (including the zeros)
+                    log.debug('_ser_sync - zeros')
+
+                if a[-2:] == bytearray('\r\n', 'ascii'):
+                    skip -= 1
+                    log.debug('_ser_sync - newline')
 
 
 class B35T(object):
