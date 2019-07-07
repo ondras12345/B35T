@@ -27,9 +27,8 @@ received_data = []  # global variable for transfering the from serial_thread
 
 # Mode 48 - occurs when rotating the switch - handled by try...except in the serial thread
 
-# Python 3 handles strings differenty (The string type in Python 2 is a list of 8-bit characters,
-# but the bytes type in Python 3 is a list of 8-bit integers.
-# http://python3porting.com/problems.html) --> removed ord(), use bytearray()
+# Python 3 handles strings differenty (http://python3porting.com/problems.html)
+#  --> removed ord(), use bytearray()
 
 # Amps range does contain 00 00 (00 and units),
 # so I have to check for more 00 bytes in a sequence)
