@@ -20,10 +20,9 @@ RELATIVE_ERROR = 10  # in %, max difference between two measurements
 
 received_data = []  # global variable for transfering the from serial_thread
 
-###############################################################################################################################
-#                                                       WARNINGS                                                              #
-#                                                                                                                             #
-###############################################################################################################################
+################################################################################
+#                                   WARNINGS                                   #
+################################################################################
 # 0.001 does NOT equal 10 ** (-3) (python2 only) --> all unit prefixes must be in scientific format (10e(n))
 
 # Mode 48 - occurs when rotating the switch - handled by try...except in the serial thread
@@ -36,10 +35,6 @@ received_data = []  # global variable for transfering the from serial_thread
 # so I have to check for more 00 bytes in a sequence)
 
 
-###############################################################################################################################
-#                                                   Others - classes                                                          #
-#                                                                                                                             #
-###############################################################################################################################
 class B35T_MeasuredValue(object):
     # digits,
     # units,
@@ -256,10 +251,6 @@ class serial_thread(threading.Thread):
         return((result, coef))
 
 
-###############################################################################################################################
-#                                                      B35T class                                                             #
-#                                                                                                                             #
-###############################################################################################################################
 class B35T(object):
     # ser,
     # logFile
