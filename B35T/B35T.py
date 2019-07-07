@@ -119,12 +119,12 @@ class B35T_protocol_decoder(object):
 
     def getValue(self):
         '''Gets value from message'''
-        (digits, LSD_position) = self._digitsFloat(message[:5], message[6])
-        units = self._unitsObj(message[9:11])
-        mode = self._modeStr(message[7])
+        (digits, LSD_position) = self._digits_to_float(message[:5], message[6])
+        units = self._units_to_object(message[9:11])
+        mode = self._mode_to_string(message[7])
         return (B35T_MeasuredValue(datetime.datetime.now(), digits, units, mode, LSD_position))
 
-    def _unitsObj(self, units):
+    def _units_to_object(self, units_bytes):
         '''Returns Unit eg. mV = Unit(0.001, 'V')'''
         unitsDict = {
             (64, 128): (1e-3, 'V'),
@@ -145,13 +145,13 @@ class B35T_protocol_decoder(object):
             (128, 4): (1e-6, 'F'),
             (8, 32): (1, 'Ohm-continuity'),
         }
-        (prefix, unit) = unitsDict.get((units[0], units[1]), (0, 0))
+        (prefix, unit) = unitsDict.get((units_bytes[0], units_bytes[1]), (0, 0))
         if prefix == 0 and unit == 0:
-            raise Exception('<unknown unit {} {}>'.format(repr(units[0]), repr(units[1])))
+            raise Exception('<unknown unit {} {}>'.format(repr(units_bytes[0]), repr(units_bytes[1])))
 
         return(B35T_Unit(prefix, unit))
 
-    def _modeStr(self, mode):
+    def _mode_to_string(self, mode_byte):
         '''Returns string representing the current mode'''
         modeDict = {
             0: '',  # DUTY, hFE, temperature, V-diode
@@ -170,12 +170,12 @@ class B35T_protocol_decoder(object):
             49: '(DC-auto)',
             51: '[HOLD]',
         }
-        modeS = modeDict.get(mode, 'BAD')
-        if modeS == 'BAD':
-            raise Exception('<unknown mode {}>'.format(repr(mode)))
-        return(modeS)
+        mode_string = modeDict.get(mode_byte, 'BAD')
+        if mode_string == 'BAD':
+            raise Exception('<unknown mode {}>'.format(repr(mode_byte)))
+        return(mode_string)
 
-    def _digitsFloat(self, sign_digits_str, decimal_position):
+    def _digits_to_float(self, sign_digits_bytes, decimal_position_byte):
         '''Converts the received digits to a float. Returns (digits, LSD_position)'''
         log.info('Entered _digitsFloat')
         coefDict = {
@@ -184,22 +184,22 @@ class B35T_protocol_decoder(object):
             50: 0.01,
             52: 0.1,
         }
-        if sign_digits_str[1] == ord('?') and sign_digits_str[4] == ord('?'):
+        if sign_digits_bytes[1] == ord('?') and sign_digits_bytes[4] == ord('?'):
             result = 99999  # O.L
         else:
             try:
-                result = int(sign_digits_str)
+                result = int(sign_digits_bytes)
             except Exception as e:
                 log.error('_digitsFloat - Exception {} occured.'.format(str(e)))
-                log.info('_digitsFloat - Exception - sign_digits_str: {}, decimalpos: {}'.format(sign_digits_str, decimal_position))
-                raise Exception('Could not convert to int: {}'.format(sign_digits_str))
+                log.info('_digitsFloat - Exception - sign_digits_bytes: {}, decimalpos: {}'.format(sign_digits_bytes, decimal_position_byte))
+                raise Exception('Could not convert to int: {}'.format(sign_digits_bytes))
 
-        coef = coefDict.get(decimal_position, 'BAD')
+        coef = coefDict.get(decimal_position_byte, 'BAD')
         log.debug('_digitsFloat - coef: {}, result: {}'.format(coef, result))
         if coef != 'BAD':
             result *= coef
         else:
-            raise Exception('Could not get coefficient: {}'.format(repr(decimal_position)))
+            raise Exception('Could not get coefficient: {}'.format(repr(decimal_position_byte)))
         result = round(result, 4)  # to remove floating point operations least significant digit junk
         log.debug('_digitsFloat - returning ({}, {})'.format(result, coef))
         return((result, coef))
