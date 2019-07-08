@@ -176,7 +176,7 @@ class B35T_protocol_decoder(object):
 
     def _digits_to_float(self, sign_digits_bytes, decimal_position_byte):
         '''Converts the received digits to a float. Returns (digits, LSD_position)'''
-        log.info('Entered _digitsFloat')
+        log.info('Entered _digits_to_float')
         coef_dictionary = {
             48: 1,
             49: 0.001,
@@ -189,18 +189,18 @@ class B35T_protocol_decoder(object):
             try:
                 result = int(sign_digits_bytes)
             except Exception as e:
-                log.error('_digitsFloat - Exception {} occured.'.format(str(e)))
-                log.info('_digitsFloat - Exception - sign_digits_bytes: {}, decimalpos: {}'.format(sign_digits_bytes, decimal_position_byte))
+                log.error('_digits_to_float - Exception {} occured.'.format(str(e)))
+                log.info('_digits_to_float - Exception - sign_digits_bytes: {}, decimalpos: {}'.format(sign_digits_bytes, decimal_position_byte))
                 raise Exception('Could not convert to int: {}'.format(sign_digits_bytes))
 
         coef = coef_dictionary.get(decimal_position_byte, 'BAD')
-        log.debug('_digitsFloat - coef: {}, result: {}'.format(coef, result))
+        log.debug('_digits_to_float - coef: {}, result: {}'.format(coef, result))
         if coef != 'BAD':
             result *= coef
         else:
             raise Exception('Could not get coefficient: {}'.format(repr(decimal_position_byte)))
         result = round(result, 4)  # to remove floating point operations least significant digit junk
-        log.debug('_digitsFloat - returning ({}, {})'.format(result, coef))
+        log.debug('_digits_to_float - returning ({}, {})'.format(result, coef))
         return (result, coef)
 
 
