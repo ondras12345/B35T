@@ -225,7 +225,7 @@ class serial_thread(threading.Thread):
             try:
                 log.debug('serial_thread - Received: {}'.format(received_message))
                 decoder = B35T_protocol_decoder(received_message)
-                received_data.append(decoder.getValue()  # list.append() is thread safe https://stackoverflow.com/questions/6319207/are-lists-thread-safe
+                received_data.append(decoder.getValue())  # list.append() is thread safe https://stackoverflow.com/questions/6319207/are-lists-thread-safe
                 log.info('serial_thread - Added value: {}'.format(str(received_data[-1])))  # nothing else is writing to this variable
             except Exception as e:
                 log.error('serial_thread - Exception {} occured.'.format(str(e)))
