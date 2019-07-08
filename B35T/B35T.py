@@ -88,7 +88,7 @@ class B35T_Unit(object):
         self.unitStr = unitStr
 
     def prefixStr(self, prefix):
-        prefixDict = {
+        prefix_dictionary = {
             1e-9: 'n',
             1e-6: 'u',
             1e-3: 'm',
@@ -96,7 +96,7 @@ class B35T_Unit(object):
             1e3: 'k',
             1e6: 'M',
         }
-        return(prefixDict.get(prefix, 'BAD'))
+        return(prefix_dictionary.get(prefix, 'BAD'))
 
     prefix = property(operator.attrgetter('_prefix'))  # validation
     @prefix.setter
@@ -116,16 +116,16 @@ class B35T_protocol_decoder(object):
     def __init__(self, message):
         self.message = message
 
-    def getValue(self):
+    def get_value(self):
         '''Gets value from message'''
         (digits, LSD_position) = self._digits_to_float(self.message[:5], self.message[6])
         units = self._units_to_object(self.message[9:11])
         mode = self._mode_to_string(self.message[7])
-        return (B35T_MeasuredValue(datetime.datetime.now(), digits, units, mode, LSD_position))
+        return B35T_MeasuredValue(datetime.datetime.now(), digits, units, mode, LSD_position)
 
     def _units_to_object(self, units_bytes):
         '''Returns Unit eg. mV = Unit(0.001, 'V')'''
-        unitsDict = {
+        units_dictionary = {
             (64, 128): (1e-3, 'V'),
             (0, 128): (1, 'V'),
             (0, 32): (1, 'Ohm'),
@@ -144,15 +144,15 @@ class B35T_protocol_decoder(object):
             (128, 4): (1e-6, 'F'),
             (8, 32): (1, 'Ohm-continuity'),
         }
-        (prefix, unit) = unitsDict.get((units_bytes[0], units_bytes[1]), (0, 0))
+        (prefix, unit) = units_dictionary.get((units_bytes[0], units_bytes[1]), (0, 0))
         if prefix == 0 and unit == 0:
             raise Exception('<unknown unit {} {}>'.format(repr(units_bytes[0]), repr(units_bytes[1])))
 
-        return(B35T_Unit(prefix, unit))
+        return B35T_Unit(prefix, unit)
 
     def _mode_to_string(self, mode_byte):
         '''Returns string representing the current mode'''
-        modeDict = {
+        mode_dictionary = {
             0: '',  # DUTY, hFE, temperature, V-diode
             1: '(Ohm-manual)',  # manual ranging + continuity
             8: '(AC-minmax)',
@@ -169,15 +169,15 @@ class B35T_protocol_decoder(object):
             49: '(DC-auto)',
             51: '[HOLD]',
         }
-        mode_string = modeDict.get(mode_byte, 'BAD')
+        mode_string = mode_dictionary.get(mode_byte, 'BAD')
         if mode_string == 'BAD':
             raise Exception('<unknown mode {}>'.format(repr(mode_byte)))
-        return(mode_string)
+        return mode_string
 
     def _digits_to_float(self, sign_digits_bytes, decimal_position_byte):
         '''Converts the received digits to a float. Returns (digits, LSD_position)'''
         log.info('Entered _digitsFloat')
-        coefDict = {
+        coef_dictionary = {
             48: 1,
             49: 0.001,
             50: 0.01,
@@ -193,7 +193,7 @@ class B35T_protocol_decoder(object):
                 log.info('_digitsFloat - Exception - sign_digits_bytes: {}, decimalpos: {}'.format(sign_digits_bytes, decimal_position_byte))
                 raise Exception('Could not convert to int: {}'.format(sign_digits_bytes))
 
-        coef = coefDict.get(decimal_position_byte, 'BAD')
+        coef = coef_dictionary.get(decimal_position_byte, 'BAD')
         log.debug('_digitsFloat - coef: {}, result: {}'.format(coef, result))
         if coef != 'BAD':
             result *= coef
@@ -201,7 +201,7 @@ class B35T_protocol_decoder(object):
             raise Exception('Could not get coefficient: {}'.format(repr(decimal_position_byte)))
         result = round(result, 4)  # to remove floating point operations least significant digit junk
         log.debug('_digitsFloat - returning ({}, {})'.format(result, coef))
-        return((result, coef))
+        return (result, coef)
 
 
 class serial_thread(threading.Thread):
@@ -225,7 +225,7 @@ class serial_thread(threading.Thread):
             try:
                 log.debug('serial_thread - Received: {}'.format(received_message))
                 decoder = B35T_protocol_decoder(received_message)
-                received_data.append(decoder.getValue())  # list.append() is thread safe https://stackoverflow.com/questions/6319207/are-lists-thread-safe
+                received_data.append(decoder.get_value())  # list.append() is thread safe https://stackoverflow.com/questions/6319207/are-lists-thread-safe
                 log.info('serial_thread - Added value: {}'.format(str(received_data[-1])))  # nothing else is writing to this variable
             except Exception as e:
                 log.error('serial_thread - Exception {} occured.'.format(str(e)))
