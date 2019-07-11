@@ -51,7 +51,10 @@ class B35T_MeasuredValue(object):
         log.info('Entered matches')
         log.debug('matches - Comparing {} to {}'.format(str(self), str(B)))
         if not self.mode == B.mode:
-            return(False)
+            return False
+
+        if not self.units.unitStr == B.units.unitStr:
+            return False
 
         valA = round(self.digits * self.units.prefix, 12)  # round because 1986 * 0.1 = 198.60000000000002
         valB = round(B.digits * B.units.prefix, 12)
