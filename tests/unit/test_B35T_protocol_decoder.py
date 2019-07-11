@@ -82,6 +82,8 @@ class TestBasic(unittest.TestCase):
             match = value.matches(value_decoded)
             OK = bool(match and not error)
             print('    {}'.format(OK))
+            if not OK:
+                print('    decoded: {}'.format(value_decoded))
             self.assertTrue(OK)
 
 
