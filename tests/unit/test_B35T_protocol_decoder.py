@@ -38,7 +38,7 @@ class TestBasic(unittest.TestCase):
             if file_name not in test_filenames:
                 test_filenames[file_name] = {}
 
-            if file_extension == '.log':
+            if file_extension == '.data':
                 test_filenames[file_name]['message'] = filename
             elif file_extension == '.val':
                 test_filenames[file_name]['value'] = filename
@@ -76,8 +76,14 @@ class TestBasic(unittest.TestCase):
             # B35T_MeasuredValue.matches() doesn't check for these:
             if not value.LSD_position == value_decoded.LSD_position:
                 error = True
+
             if not value.digits == value_decoded.digits:
                 error = True
+
+            # if not value.units == value_decoded.units:  # this results in failing all the tests
+            #     error = True
+            #     print(repr(value.units))
+            #     print(repr(value_decoded.units))
 
             match = value.matches(value_decoded)
             OK = bool(match and not error)

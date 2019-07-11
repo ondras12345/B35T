@@ -1,0 +1,8 @@
+1250 - ohm
+1350 - V-diode
+1440 - continuity
+1490 - capacity
+1580 - HZ
+1660 - A-DC
+1750 - A-DC-delta
+17C0 - A-AC
