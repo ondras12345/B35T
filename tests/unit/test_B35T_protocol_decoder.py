@@ -15,9 +15,9 @@ fixtures_dir = os.path.join(script_dir, 'fixtures', 'decoder')
 
 EVAL_VALUE_REGEX_STRING = ("^B35T\.B35T_MeasuredValue\("
                            "dateTime=datetime\.datetime\.now\(\), "
-                           "digits=[0-9.]{1,5}, "
-                           "units=B35T\.B35T_Unit\([0-9e\-]{1,}, '[a-zA-Z]{1,}'\), "
-                           "mode='[\(\)a-zA-Z\-]{1,}', "
+                           "digits=[0-9.]{1,}, "
+                           "units=B35T\.B35T_Unit\([0-9e\-]{1,}, '[a-zA-Z\-]{1,}'\), "
+                           "mode='[\(\)a-zA-Z\-]{0,}', "
                            "LSD_position=[01.]{1,}"
                            "\)$")
 
