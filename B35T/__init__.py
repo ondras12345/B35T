@@ -20,26 +20,20 @@ RELATIVE_ERROR = 10  # in %, max difference between two measurements
 
 received_data = []  # global variable for transfering the from serial_thread
 
-###############################################################################################################################
-#                                                       WARNINGS                                                              #
-#                                                                                                                             #
-###############################################################################################################################
+################################################################################
+#                                   WARNINGS                                   #
+################################################################################
 # 0.001 does NOT equal 10 ** (-3) (python2 only) --> all unit prefixes must be in scientific format (10e(n))
 
 # Mode 48 - occurs when rotating the switch - handled by try...except in the serial thread
 
-# Python 3 handles strings differenty (The string type in Python 2 is a list of 8-bit characters,
-# but the bytes type in Python 3 is a list of 8-bit integers.
-# http://python3porting.com/problems.html) --> removed ord(), use bytearray()
+# Python 3 handles strings differenty (http://python3porting.com/problems.html)
+#  --> removed ord(), use bytearray()
 
 # Amps range does contain 00 00 (00 and units),
 # so I have to check for more 00 bytes in a sequence)
 
 
-###############################################################################################################################
-#                                                   Others - classes                                                          #
-#                                                                                                                             #
-###############################################################################################################################
 class B35T_MeasuredValue(object):
     # digits,
     # units,
@@ -94,7 +88,7 @@ class B35T_Unit(object):
         self.unitStr = unitStr
 
     def prefixStr(self, prefix):
-        prefixDict = {
+        prefix_dictionary = {
             1e-9: 'n',
             1e-6: 'u',
             1e-3: 'm',
@@ -102,7 +96,7 @@ class B35T_Unit(object):
             1e3: 'k',
             1e6: 'M',
         }
-        return(prefixDict.get(prefix, 'BAD'))
+        return(prefix_dictionary.get(prefix, 'BAD'))
 
     prefix = property(operator.attrgetter('_prefix'))  # validation
     @prefix.setter
@@ -118,6 +112,98 @@ class B35T_Unit(object):
         return ('{}({}, {})'.format(self.__class__.__name__, repr(self.prefix), repr(self.unitStr)))
 
 
+class B35T_protocol_decoder(object):
+    def __init__(self, message):
+        self.message = message
+
+    def get_value(self):
+        '''Gets value from message'''
+        (digits, LSD_position) = self._digits_to_float(self.message[:5], self.message[6])
+        units = self._units_to_object(self.message[9:11])
+        mode = self._mode_to_string(self.message[7])
+        return B35T_MeasuredValue(datetime.datetime.now(), digits, units, mode, LSD_position)
+
+    def _units_to_object(self, units_bytes):
+        '''Returns Unit eg. mV = Unit(0.001, 'V')'''
+        units_dictionary = {
+            (64, 128): (1e-3, 'V'),
+            (0, 128): (1, 'V'),
+            (0, 32): (1, 'Ohm'),
+            (32, 32): (1e3, 'Ohm'),
+            (16, 32): (1e6, 'Ohm'),
+            (0, 64): (1, 'A'),
+            (64, 64): (1e-3, 'A'),
+            (128, 64): (1e-6, 'A'),
+            (0, 1): (1, u'degF'),
+            (0, 2): (1, u'degC'),
+            (0, 8): (1, 'Hz'),
+            (2, 0): (1, '%'),
+            (0, 16): (1, 'hFE'),
+            (4, 128): (1, 'V-diode'),
+            (0, 4): (1e-9, 'F'),
+            (128, 4): (1e-6, 'F'),
+            (8, 32): (1, 'Ohm-continuity'),
+        }
+        (prefix, unit) = units_dictionary.get((units_bytes[0], units_bytes[1]), (0, 0))
+        if prefix == 0 and unit == 0:
+            raise Exception('<unknown unit {} {}>'.format(repr(units_bytes[0]), repr(units_bytes[1])))
+
+        return B35T_Unit(prefix, unit)
+
+    def _mode_to_string(self, mode_byte):
+        '''Returns string representing the current mode'''
+        mode_dictionary = {
+            0: '',  # DUTY, hFE, temperature, V-diode
+            1: '(Ohm-manual)',  # manual ranging + continuity
+            8: '(AC-minmax)',
+            9: '(AC-manual)',
+            12: '(AC delta)',  # may be something else, but it is present when AC delta
+            16: '(DC-minmax)',
+            17: '(DC-manual)',
+            20: '(delta)',  # may be wrong
+            # 21 - when switching to delta - did not occur during debugging
+            32: '',  # Hz, F
+            33: '(Ohm-auto)',
+            41: '(AC-auto)',
+            # 48 I think it occurs when rotating the range switch
+            49: '(DC-auto)',
+            51: '[HOLD]',
+        }
+        mode_string = mode_dictionary.get(mode_byte, 'BAD')
+        if mode_string == 'BAD':
+            raise Exception('<unknown mode {}>'.format(repr(mode_byte)))
+        return mode_string
+
+    def _digits_to_float(self, sign_digits_bytes, decimal_position_byte):
+        '''Converts the received digits to a float. Returns (digits, LSD_position)'''
+        log.info('Entered _digits_to_float')
+        coef_dictionary = {
+            48: 1,
+            49: 0.001,
+            50: 0.01,
+            52: 0.1,
+        }
+        if sign_digits_bytes[1] == ord('?') and sign_digits_bytes[4] == ord('?'):
+            result = 99999  # O.L
+        else:
+            try:
+                result = int(sign_digits_bytes)
+            except Exception as e:
+                log.error('_digits_to_float - Exception {} occured.'.format(str(e)))
+                log.info('_digits_to_float - Exception - sign_digits_bytes: {}, decimalpos: {}'.format(sign_digits_bytes, decimal_position_byte))
+                raise Exception('Could not convert to int: {}'.format(sign_digits_bytes))
+
+        coef = coef_dictionary.get(decimal_position_byte, 'BAD')
+        log.debug('_digits_to_float - coef: {}, result: {}'.format(coef, result))
+        if coef != 'BAD':
+            result *= coef
+        else:
+            raise Exception('Could not get coefficient: {}'.format(repr(decimal_position_byte)))
+        result = round(result, 4)  # to remove floating point operations least significant digit junk
+        log.debug('_digits_to_float - returning ({}, {})'.format(result, coef))
+        return (result, coef)
+
+
 class serial_thread(threading.Thread):
     def __init__(self, ser):
         threading.Thread.__init__(self)
@@ -127,7 +213,7 @@ class serial_thread(threading.Thread):
 
     def run(self):
         global received_data
-        recv_data = bytearray('', 'ascii')
+        received_message = bytearray('', 'ascii')
         log.info('serial_thread - Syncing')
         self._ser_sync()
         while not self.stop_event.is_set():
@@ -135,10 +221,11 @@ class serial_thread(threading.Thread):
             while not self.ser.inWaiting() >= DATA_LENGTH:
                 pass  # wait for the data
             log.debug('serial_thread - Receiving')
-            recv_data = self.ser.read(DATA_LENGTH)
+            received_message = self.ser.read(DATA_LENGTH)
             try:
-                log.debug('serial_thread - Received: {}'.format(recv_data))
-                received_data.append(self._getValue(bytearray(recv_data)))  # list.append() is thread safe https://stackoverflow.com/questions/6319207/are-lists-thread-safe
+                log.debug('serial_thread - Received: {}'.format(received_message))
+                decoder = B35T_protocol_decoder(received_message)
+                received_data.append(decoder.get_value())  # list.append() is thread safe https://stackoverflow.com/questions/6319207/are-lists-thread-safe
                 log.info('serial_thread - Added value: {}'.format(str(received_data[-1])))  # nothing else is writing to this variable
             except Exception as e:
                 log.error('serial_thread - Exception {} occured.'.format(str(e)))
@@ -168,98 +255,7 @@ class serial_thread(threading.Thread):
                     skip -= 1
                     log.debug('_ser_sync - newline')
 
-    def _getValue(self, raw_data):
-        '''Gets value from raw data'''
-        (digits, LSD_position) = self._digitsFloat(raw_data[:5], raw_data[6])
-        units = self._unitsObj(raw_data[9:11])
-        mode = self._modeStr(raw_data[7])
-        return (B35T_MeasuredValue(datetime.datetime.now(), digits, units, mode, LSD_position))
 
-    def _unitsObj(self, units):
-        '''Returns Unit eg. mV = Unit(0.001, 'V')'''
-        unitsDict = {
-            (64, 128): (1e-3, 'V'),
-            (0, 128): (1, 'V'),
-            (0, 32): (1, 'Ohm'),
-            (32, 32): (1e3, 'Ohm'),
-            (16, 32): (1e6, 'Ohm'),
-            (0, 64): (1, 'A'),
-            (64, 64): (1e-3, 'A'),
-            (128, 64): (1e-6, 'A'),
-            (0, 1): (1, u'degF'),
-            (0, 2): (1, u'degC'),
-            (0, 8): (1, 'Hz'),
-            (2, 0): (1, '%'),
-            (0, 16): (1, 'hFE'),
-            (4, 128): (1, 'V-diode'),
-            (0, 4): (1e-9, 'F'),
-            (128, 4): (1e-6, 'F'),
-            (8, 32): (1, 'Ohm-continuity'),
-        }
-        (prefix, unit) = unitsDict.get((units[0], units[1]), (0, 0))
-        if prefix == 0 and unit == 0:
-            raise Exception('<unknown unit {} {}>'.format(repr(units[0]), repr(units[1])))
-
-        return(B35T_Unit(prefix, unit))
-
-    def _modeStr(self, mode):
-        '''Returns string representing the current mode'''
-        modeDict = {
-            0: '',  # DUTY, hFE, temperature, V-diode
-            1: '(Ohm-manual)',  # manual ranging + continuity
-            8: '(AC-minmax)',
-            9: '(AC-manual)',
-            12: '(AC delta)',  # may be something else, but it is present when AC delta
-            16: '(DC-minmax)',
-            17: '(DC-manual)',
-            20: '(delta)',  # may be wrong
-            # 21 - when switching to delta - did not occur during debugging
-            32: '',  # Hz, F
-            33: '(Ohm-auto)',
-            41: '(AC-auto)',
-            # 48 I think it occurs when rotating the range switch
-            49: '(DC-auto)',
-            51: '[HOLD]',
-        }
-        modeS = modeDict.get(mode, 'BAD')
-        if modeS == 'BAD':
-            raise Exception('<unknown mode {}>'.format(repr(mode)))
-        return(modeS)
-
-    def _digitsFloat(self, sign_digits_str, decimal_position):
-        '''Converts the received digits to a float. Returns (digits, LSD_position)'''
-        log.info('Entered _digitsFloat')
-        coefDict = {
-            48: 1,
-            49: 0.001,
-            50: 0.01,
-            52: 0.1,
-        }
-        if sign_digits_str[1] == ord('?') and sign_digits_str[4] == ord('?'):
-            result = 99999  # O.L
-        else:
-            try:
-                result = int(sign_digits_str)
-            except Exception as e:
-                log.error('_digitsFloat - Exception {} occured.'.format(str(e)))
-                log.info('_digitsFloat - Exception - sign_digits_str: {}, decimalpos: {}'.format(sign_digits_str, decimal_position))
-                raise Exception('Could not convert to int: {}'.format(sign_digits_str))
-
-        coef = coefDict.get(decimal_position, 'BAD')
-        log.debug('_digitsFloat - coef: {}, result: {}'.format(coef, result))
-        if coef != 'BAD':
-            result *= coef
-        else:
-            raise Exception('Could not get coefficient: {}'.format(repr(decimal_position)))
-        result = round(result, 4)  # to remove floating point operations least significant digit junk
-        log.debug('_digitsFloat - returning ({}, {})'.format(result, coef))
-        return((result, coef))
-
-
-###############################################################################################################################
-#                                                      B35T class                                                             #
-#                                                                                                                             #
-###############################################################################################################################
 class B35T(object):
     # ser,
     # logFile
