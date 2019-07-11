@@ -47,11 +47,11 @@ class TestBasic(unittest.TestCase):
 
         for test in test_filenames:  # run the test
             print('testing: {}'.format(test))
+            if 'message' not in test_filenames[test] or 'value' not in test_filenames[test]:
+                raise Exception('File missing for test: {}'.format(test))
+
             message_filename = test_filenames[test]['message']
             value_filename = test_filenames[test]['value']
-
-            if message_filename is None or value_filename is None:
-                raise Exception('File missing for test: {}'.format(test))
 
             message_file = open(os.path.join(fixtures_dir, message_filename), 'rb')
             message = bytearray(message_file.read())
