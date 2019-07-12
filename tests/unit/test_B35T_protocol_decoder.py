@@ -7,7 +7,7 @@
 import unittest
 import os
 import re
-import datetime
+import datetime  # used by evaluated expressions in .val files
 import B35T
 
 script_dir = os.path.dirname(__file__)  # absolute dir the script is in
