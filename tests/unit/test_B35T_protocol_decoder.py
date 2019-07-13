@@ -80,10 +80,8 @@ class TestBasic(unittest.TestCase):
             if not value.digits == value_decoded.digits:
                 error = True
 
-            # if not value.units == value_decoded.units:  # this results in failing all the tests
-            #     error = True
-            #     print(repr(value.units))
-            #     print(repr(value_decoded.units))
+            if not repr(value.units) == repr(value_decoded.units):
+                error = True
 
             match = value.matches(value_decoded)
             OK = bool(match and not error)
