@@ -46,7 +46,7 @@ class TestBasic(unittest.TestCase):
                 raise Exception('Unexpected file: {}'.format(filename))
 
         for test in test_filenames:  # run the test
-            print('testing: {}'.format(test))
+            print('testing: {}'.format(test), end='')
             if 'message' not in test_filenames[test] or 'value' not in test_filenames[test]:
                 raise Exception('File missing for test: {}'.format(test))
 
@@ -85,7 +85,8 @@ class TestBasic(unittest.TestCase):
 
             match = value.matches(value_decoded)
             OK = bool(match and not error)
-            print('    {}'.format(OK))
+            spaces = ' ' * (40 - len(test))
+            print('{}{}'.format(spaces, OK))
             if not OK:
                 print('    decoded: {}'.format(value_decoded))
             self.assertTrue(OK)
