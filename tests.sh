@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 repoDir=$(git rev-parse --show-toplevel)
-cd $repoDir
+cd "$repoDir"
 printf '========== flake8 ==========\n'
 ./tests/linters/flake.sh
 printf '\n========== bandit ==========\n'
