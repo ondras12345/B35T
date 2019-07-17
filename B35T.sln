@@ -7,6 +7,8 @@ Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "B35T_reader", "B35T_reader\
 EndProject
 Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "B35T", "B35T\B35T.pyproj", "{F2EE90C4-038A-490B-A6BC-3D0C670BEF92}"
 EndProject
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "tests", "tests\tests.pyproj", "{EB8F78C8-88BC-4CA6-AA25-257C7C64E428}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -17,6 +19,8 @@ Global
 		{1891E04C-9BFC-434D-89A9-0F6F75030AC4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F2EE90C4-038A-490B-A6BC-3D0C670BEF92}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{F2EE90C4-038A-490B-A6BC-3D0C670BEF92}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EB8F78C8-88BC-4CA6-AA25-257C7C64E428}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EB8F78C8-88BC-4CA6-AA25-257C7C64E428}.Release|Any CPU.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

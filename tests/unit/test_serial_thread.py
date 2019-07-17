@@ -68,7 +68,7 @@ class TestBasic(unittest.TestCase):
             while fixture_log_remaining() >= B35T.DATA_LENGTH * 100:  # wait for some data
                 pass
 
-            readings = B35T.received_data
+            readings = DMM.serialThread.received_data
             readings.append('last')
             found = {}
             for reading in readings:
