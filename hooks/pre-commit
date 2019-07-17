@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+repoDir=$(git rev-parse --show-toplevel)
+"$repoDir/tests.sh" < /dev/tty  # /dev/tty for pausing (press any key...)
+exit 0
