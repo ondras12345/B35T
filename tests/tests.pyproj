@@ -3,9 +3,9 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{f2ee90c4-038a-490b-a6bc-3d0c670bef92}</ProjectGuid>
+    <ProjectGuid>{eb8f78c8-88bc-4ca6-aa25-257c7c64e428}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>__init__.py</StartupFile>
+    <StartupFile />
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -19,7 +19,15 @@
     <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="__init__.py" />
+    <Compile Include="unit\test_B35T_protocol_decoder.py" />
+    <Compile Include="unit\test_serial_thread.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="unit\fixtures\2019_07_08_tests_index.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="unit" />
+    <Folder Include="unit\fixtures" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
 </Project>

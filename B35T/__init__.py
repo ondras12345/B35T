@@ -18,8 +18,6 @@ ABSOLUTE_ERROR = 5  # max least significant digit deviation
 RELATIVE_ERROR = 10  # in %, max difference between two measurements
 
 
-received_data = []  # global variable for transfering the from serial_thread
-
 ################################################################################
 #                                   WARNINGS                                   #
 ################################################################################
@@ -51,7 +49,10 @@ class B35T_MeasuredValue(object):
         log.info('Entered matches')
         log.debug('matches - Comparing {} to {}'.format(str(self), str(B)))
         if not self.mode == B.mode:
-            return(False)
+            return False
+
+        if not self.units.unitStr == B.units.unitStr:
+            return False
 
         valA = round(self.digits * self.units.prefix, 12)  # round because 1986 * 0.1 = 198.60000000000002
         valB = round(B.digits * B.units.prefix, 12)
@@ -210,9 +211,9 @@ class serial_thread(threading.Thread):
         self.stop_event = threading.Event()
         self.ser = ser
         self.alive = True
+        self.received_data = []
 
     def run(self):
-        global received_data
         received_message = bytearray('', 'ascii')
         log.info('serial_thread - Syncing')
         self._ser_sync()
@@ -225,8 +226,8 @@ class serial_thread(threading.Thread):
             try:
                 log.debug('serial_thread - Received: {}'.format(received_message))
                 decoder = B35T_protocol_decoder(received_message)
-                received_data.append(decoder.get_value())  # list.append() is thread safe https://stackoverflow.com/questions/6319207/are-lists-thread-safe
-                log.info('serial_thread - Added value: {}'.format(str(received_data[-1])))  # nothing else is writing to this variable
+                self.received_data.append(decoder.get_value())  # list.append() is thread safe https://stackoverflow.com/questions/6319207/are-lists-thread-safe
+                log.info('serial_thread - Added value: {}'.format(str(self.received_data[-1])))  # nothing else is writing to this variable
             except Exception as e:
                 log.error('serial_thread - Exception {} occured.'.format(str(e)))
                 self._ser_sync()  # resynchronize
@@ -299,7 +300,7 @@ class B35T(object):
         readings = [None] * count
         while not ok:
             # get reading
-            temp = received_data[-1]  # because of the thread
+            temp = self.serialThread.received_data[-1]
             if temp.dateTime > last_time:
                 readings[i] = temp
                 last_time = datetime.datetime.now()
@@ -332,7 +333,7 @@ class B35T(object):
 
     def read(self):
         '''Reads a value from the DMM (does not check for unstability and may return old value in case the program freezes)'''
-        return(received_data[-1])
+        return self.serialThread.received_data[-1]
 
     def __str__(self):
         return('B35T DMM on port {}'.format(str(self.ser)))

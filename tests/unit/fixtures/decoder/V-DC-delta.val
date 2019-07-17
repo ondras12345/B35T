@@ -1,0 +1,1 @@
+B35T.B35T_MeasuredValue(dateTime=datetime.datetime.now(), digits=004.0, units=B35T.B35T_Unit(1e-3, 'V'), mode='(delta)', LSD_position=0.1)

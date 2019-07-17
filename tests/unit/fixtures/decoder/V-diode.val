@@ -1,0 +1,1 @@
+B35T.B35T_MeasuredValue(dateTime=datetime.datetime.now(), digits=99.999, units=B35T.B35T_Unit(1, 'V-diode'), mode='', LSD_position=0.001)
