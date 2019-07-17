@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 echo "# The subject should have less than  50 characters" >> $1
 echo "# Wrap the body at                                         72 characters" >> $1
+echo "# Character counts in nano: alt + c" >> $1
