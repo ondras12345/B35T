@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
 repoDir=$(git rev-parse --show-toplevel)
-"$repoDir/tests.sh" < /dev/tty  # /dev/tty for pausing (press any key...)
+# https://stackoverflow.com/questions/911168/how-to-detect-if-my-shell-script-is-running-through-a-pipe
+if [ -t 1 ] ; then  # othervise pragrams like Atom would get stuck
+    # terminal
+    "$repoDir/tests.sh" < /dev/tty  # /dev/tty for pausing (press any key...)
+else
+    # not in terminal
+fi
+
 exit 0
