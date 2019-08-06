@@ -63,8 +63,12 @@ class MyPrompt(Cmd, object):
         if dmm is not None:
             try:
                 reading = dmm.read()
-                timediff = datetime.datetime.now() - reading.dateTime
-                print('{} ({} ago)'.format(str(reading), timediff))
+                time_delta = datetime.datetime.now() - reading.dateTime
+                time_delta_seconds = str(int(time_delta.total_seconds() * 100) / 100)
+                if len(time_delta_seconds) == 3:
+                    time_delta_seconds += '0'
+
+                print('{} ({} s ago)'.format(str(reading), time_delta_seconds))
             except Exception as e:
                 print('Exception: {} occured.'.format(str(e)))
         else:
@@ -84,8 +88,12 @@ class MyPrompt(Cmd, object):
             for i in range(count):
                 try:
                     reading = dmm.read()
-                    timediff = datetime.datetime.now() - reading.dateTime
-                    print('{}   The last reading was taken {} ago:   {}'.format(datetime.datetime.now(), timediff, str(reading)))
+                    time_delta = datetime.datetime.now() - reading.dateTime
+                    time_delta_seconds = str(int(time_delta.total_seconds() * 100) / 100)
+                    if len(time_delta_seconds) == 3:
+                        time_delta_seconds += '0'
+
+                    print('{}   The last reading was taken {} s ago:   {}'.format(datetime.datetime.now().strftime('%H:%M:%S'), time_delta_seconds, str(reading)))
                 except Exception as e:
                     print('Exception: {} occured.'.format(str(e)))
                 time.sleep(1)
