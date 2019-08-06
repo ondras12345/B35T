@@ -223,7 +223,7 @@ class serial_thread(threading.Thread):
             while not self.ser.inWaiting() >= DATA_LENGTH:
                 time.sleep(0.2)  # wait for the data
             log.debug('serial_thread - Receiving')
-            received_message = self.ser.read(DATA_LENGTH)
+            received_message = bytearray(self.ser.read(DATA_LENGTH))
             try:
                 log.debug('serial_thread - Received: {}'.format(repr(received_message)))
                 decoder = B35T_protocol_decoder(received_message)
