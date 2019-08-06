@@ -9,6 +9,7 @@
 import serial
 import threading
 import datetime
+import time
 import operator
 import logging as log
 
@@ -220,7 +221,7 @@ class serial_thread(threading.Thread):
         while not self.stop_event.is_set():
             log.debug('serial_thread - Waiting')
             while not self.ser.inWaiting() >= DATA_LENGTH:
-                pass  # wait for the data
+                time.sleep(0.2)  # wait for the data
             log.debug('serial_thread - Receiving')
             received_message = self.ser.read(DATA_LENGTH)
             try:
