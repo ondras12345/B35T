@@ -4,6 +4,7 @@
 # Each test consists of test_name.log and test_name.val file_extension
 # test_name.val contains reference object and is evaluated - it must pass a regex
 
+from __future__ import print_function
 import unittest
 import os
 import re
